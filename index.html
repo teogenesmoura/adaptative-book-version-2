@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+
+Don't worry, spiders,
+I keep house
+casually.
+
+Kobayashi Issa
+
+-->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0, user-scalable=0.0" />
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- OpenGraph metadata -->
+<meta property="og:title" content="O aparelho do partido" />
+<meta property="og:site_name" content="O aparelho do partido by Teógenes Moura" />
+<meta property="og:type" content="book" />
+<meta property="og:book:author" content="Teógenes Moura" />
+<meta property="og:image" content="https://teogenesmoura.github.io/adaptative-book-version-1/" />
+<meta property="og:description" content="This is the first of a series of experiments with dinamically generated science fiction texts." />
+<meta property="og:url" content="https://teogenesmoura.github.io/adaptative-book-version-1/" />
+
+
+<!-- Twitter Card metadata -->
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@teomoura2" />
+<meta name="twitter:title" content="O aparelho do partido by Teógenes Moura" />
+<meta name="twitter:description" content="This is the first of a series of experiments with dinamically generated science fiction texts." />
+<meta name="twitter:image" content="https://teogenesmoura.github.io/adaptative-book-version-1/" />
+
+
+<!-- JSON-LD metadata -->
+<script type="application/ld+json">
+{
+"@context": "http://schema.org",
+"@type": "Book",
+"name": "O aparelho do partido",
+"author": "Teógenes Moura",
+"description": "This is the first of a series of experiments with dinamically generated science fiction texts.",
+"url": "https://teogenesmoura.github.io/adaptative-book-version-1/"
+}
+</script>
+
+
+<meta name="generator" content="These human fingers" />
+
+<link href="css/web-book-CfON8fJKiYY5.css" type="text/css" rel="stylesheet" />
+
+<title>O aparelho do partido</title>
+<script>
+
+// https://github.com/iamdustan/smoothscroll/blob/master/src/smoothscroll.js
+function smoothScroll(x) {
+var startTime = performance.now();
+var startX = document.body.scrollLeft;
+var startY = 0;
+
+// scroll
+smoothScrollStep({
+startTime: startTime,
+startX: startX || 0,
+startY: 0,
+x: x || 0,
+y: 0
+});
+}
+
+function ease(k) {
+//return 0.5 * (1 - Math.cos(Math.PI * k));
+//return 1-(--k)*k*k*k;
+//return k*k*k*k*k;
+return (-Math.pow( 2, -10 * k ) + 1 );
+}
+
+const SCROLL_TIME = 200;
+
+function smoothScrollStep(context) {
+let time = performance.now()
+let value;
+let currentX;
+let elapsed = (time - context.startTime) / SCROLL_TIME;
+
+// avoid elapsed times higher than one
+elapsed = elapsed > 1 ? 1 : elapsed;
+
+// apply easing to elapsed time
+value = ease(elapsed);
+
+currentX = context.startX + (context.x - context.startX) * value;
+
+// document.body.scrollTo(currentX, 0);
+document.body.scrollLeft = currentX;
+
+// keep scrolling if we have not reached our destination
+// this was > 1.0 and that wasn't working for some reason
+if (Math.abs(currentX - context.x) > 2.0) {
+requestAnimationFrame(smoothScrollStep.bind(window, context));
+} else {
+// other side of possible mobile optimizaton thing
+// document.body.style.backgroundColor = realColor;
+}
+}
+
+// snap scroll helper
+// inspired by:
+// https://github.com/jpamental/moby-dick/pull/5/commits/ec022061684ae4c233fba047fb341b41deeead6c
+
+function setupShadowPages() {
+// is this guaranteed to execute AFTER column layout occurs?
+// currently: i do not know
+
+let pageCount = Math.floor( bookElement.scrollWidth / window.innerWidth );
+
+pageCount += 10; // uhhh :)
+
+document.documentElement.style.setProperty("--page-count", pageCount);
+
+let shadowPageContainer = document.querySelector("div.shadow-page-container");
+
+for (let i = 0; i < pageCount; i++) {
+let shadowPage = document.createElement("div");
+shadowPage.innerHTML = " ";
+shadowPage.className = "shadow-page";
+shadowPageContainer.appendChild(shadowPage);
+}
+}
+
+function getComputed(propertyName) {
+return Number( getComputedStyle(bookElement)
+.getPropertyValue(propertyName)
+.replace("px", "") );
+}
+
+function getRect(element) {
+// Terrible hack for Firefox, which treats getBoundingClientRect as an
+// inner dimension for some unknown reason.
+let rects = element.getClientRects();
+return rects[rects.length - 1]
+}
+
+function turnPageForward() {
+turnPage(1);
+}
+
+function turnPageBack() {
+turnPage(-1);
+}
+
+function turnPage(turnDirection) {
+
+let currentLeftOffset = document.body.scrollLeft;
+
+let columnWidth = getComputed("column-width");
+let columnGap = getComputed("column-gap");
+let columnTotal = columnWidth + columnGap;
+
+// this was previously Math.floor which was causing problems when
+// paging backwards
+
+let closestPageNumber = Math.round( currentLeftOffset / columnTotal ) + turnDirection;
+
+writePageNumber(closestPageNumber);
+
+let closestPageEdge = closestPageNumber * columnTotal;
+
+// aha, but what if we are already AT that page?
+// 8.0 pixels is a bit of a "magic number"...
+if ( Math.abs( closestPageEdge - currentLeftOffset) < 8.0 ) {
+closestPageEdge += columnTotal * turnDirection;
+writePageNumber( closestPageNumber + 1 ); // hacky
+}
+
+// there's got to be a better way to do this...
+if ( (turnDirection > 0) &&
+( getRect(endElement).x < window.innerWidth )
+) {
+
+return;
+}
+
+// if we're turning a page, we are navigating away from a chapter title,
+// so we want to clear this out
+window.location.hash = "";
+
+smoothScroll(closestPageEdge);
+}
+
+function turnToPage(pageNumber) {
+let columnWidth = getComputed("column-width");
+let columnGap = getComputed("column-gap");
+let columnTotal = columnWidth + columnGap;
+
+let pageEdge = pageNumber * columnTotal;
+
+writePageNumber(pageNumber);
+
+// the cute tiny bookmark
+let bookmarkElement = document.querySelector("div.bookmark");
+bookmarkElement.style.display = "block";
+// bookmarkElement.style.top = `0px`;
+bookmarkElement.style.left = `${pageEdge + columnWidth / 2.0}px`;
+console.log(bookmarkElement.style.left);
+
+document.body.scrollLeft = pageEdge;
+}
+
+function turnToAnchor(anchor) {
+let editedAnchor = "chapter_" + anchor.replace( "#", "" );
+
+let anchoredHeading = Array.from( document.querySelectorAll("h2") )
+.find( heading => {
+return heading.getAttribute("id") == editedAnchor;
+} );
+
+anchoredHeading.scrollIntoView();
+
+let wherePageEdgeShouldBe = ( window.innerWidth - getRect(bookelement).width ) / 2.0;
+let offset = getRect(anchoredHeading).x - wherePageEdgeShouldBe;
+
+document.body.scrollLeft += offset;
+}
+
+function setTextScale(scale) {
+document.documentElement.style.setProperty( "--font-size", `${baseFontSize * scale}px` );
+}
+
+function toggleNav() {
+if ( navElement.className == "invisible" ) {
+navElement.className = "visible";
+} else {
+navElement.className = "invisible";
+}
+}
+
+function writePageNumber(pageNumber) {
+window.localStorage.setItem( "pageNumber", pageNumber );
+}
+
+function readPageNumber() {
+let pageNumber = Number( window.localStorage.getItem("pageNumber") );
+if ( pageNumber > 1 ) {
+console.log(`turning to page ${pageNumber}`)
+turnToPage(pageNumber); // i'm not TOTALLY sure why i need the +1... oh well
+}
+}
+
+var bookElement;
+var navElement;
+var endElement;
+var baseFontSize = 18.0;
+var lastMouseDown = Date.now();
+var lastClick = Date.now();
+
+document.addEventListener("DOMContentLoaded", e => {
+
+bookElement = document.querySelector("div.book");
+navElement = document.querySelector("nav");
+endElement = document.querySelector("p.last-page")
+
+if (window.innerWidth < 640) {
+setupShadowPages();
+}
+
+if (window.location.hash.length > 1) { // > 1, because an empty "#" is length 1
+turnToAnchor( window.location.hash )
+} else {
+readPageNumber();
+}
+
+// toc button
+
+document.querySelector("button.toc-button").addEventListener("click", e => {
+toggleNav();
+e.stopPropagation();
+});
+
+// cross button
+
+document.querySelector("div.close-button").addEventListener("click", e => {
+toggleNav();
+e.stopPropagation();
+});
+
+// toc text size buttons
+
+document.querySelectorAll("nav div.controls button").forEach(button => {
+let size = `${baseFontSize * button.dataset.scale}px`;
+button.style.fontSize = size;
+
+button.addEventListener("click", e => {
+setTextScale(e.target.dataset.scale);
+e.stopPropagation();
+});
+});
+
+// might delete this later, b/c it is possibly ridiculous:
+// updating the buttons to reflect the "real" base font size
+
+setTimeout( function(){
+let realFontSize = Number( getComputedStyle(document.documentElement)
+.getPropertyValue("font-size")
+.replace("px", "") );
+console.log(`real font size detected: ${realFontSize}px`);
+
+document.querySelectorAll("nav div.controls button").forEach(button => {
+let size = `${realFontSize * button.dataset.scale}px`;
+button.style.fontSize = size;
+
+button.addEventListener("click", e => {
+setTextScale(e.target.dataset.scale);
+e.stopPropagation();
+});
+});
+}, 1000);
+
+// toc chapter links
+
+document.querySelectorAll("nav a").forEach(link => {
+
+link.addEventListener("click", e => {
+toggleNav();
+turnToAnchor( e.target.getAttribute("href") )
+e.stopPropagation();
+});
+});
+
+});
+
+document.addEventListener("keydown", e => {
+if (event.keyCode === 37) { // left
+turnPageBack();
+}
+if ( (event.keyCode === 39) || (event.keyCode === 32) ) { // right, space
+turnPageForward();
+}
+});
+
+document.addEventListener("wheel", e => {
+
+if (navElement.className == "visible") {
+return;
+}
+
+if ( Math.abs(e.deltaY) > Math.abs(e.deltaX) ) {
+e.preventDefault();
+document.body.scrollLeft += e.deltaY;
+}
+}, { passive: false });
+
+document.addEventListener("mousedown", function(e) {
+lastMouseDown = Date.now();
+});
+
+// values in millis
+const CLICK_DEBOUNCE_TIME = 50;
+const LONG_PRESS_TIME = 250;
+
+document.addEventListener("click", function(e) {
+
+let now = Date.now();
+
+// don't advance on long press (text selection?)
+if ( (now - lastMouseDown) > LONG_PRESS_TIME ) {
+return;
+}
+
+// don't advance on double-click
+if ( (now - lastClick) < CLICK_DEBOUNCE_TIME ) {
+return;
+}
+
+lastClick = now;
+
+// don't advance on link click
+if (e.target.tagName == "A") {
+return;
+}
+
+// don't advance if we are selecting text
+if ( window.getSelection().toString().length > 0 ) {
+return;
+}
+
+if ( e.clientX < (window.innerWidth / 3.0) ) {
+turnPageBack();
+} else {
+turnPageForward();
+}
+});
+
+// hash change detector
+// note: it's a window event, not a document event
+
+window.addEventListener("hashchange", e => {
+if (window.location.hash.length > 1) {
+turnToAnchor( window.location.hash )
+}
+});
+
+</script>
+</head>
+
+<body>
+
+<nav class="invisible">
+<div class="controls">
+<button data-scale="0.8">A</button>
+<button data-scale="1.0">A</button>
+<button data-scale="1.2">A</button>
+<button data-scale="1.4">A</button>
+<button data-scale="2.0">A</button>
+</div>
+
+<div class="toc">
+<h1>Table of Contents</h1>
+<div class="close-button">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 10 10" xml:space="preserve">
+<g>
+<line x1="0" y1="0" x2="10" y2="10" vector-effect="non-scaling-stroke" />
+<line x1="10" y1="0" x2="0" y2="10" vector-effect="non-scaling-stroke" />
+</g>
+</svg>
+</div>
+<ol><li><a href="#note_to_readers">Note to Readers</a></li><li><a href="#o_aparelho_do_partido">O Aparelho do partido</a></li></ol>
+</div>
+</nav>
+
+<div class="print-cover">
+<div class="title"> <h1><span>O aparelho do Partido</span> </h1> <h2>Teógenes Moura</h2> </div>
+</div>
+
+<div class="book">
+
+<div class="tutorial">
+<h2>How to Read</h2>
+<p><i>On a phone:</i><br/>Swipe, or tap the edges of the page</p>
+<p><i>On a laptop:</i><br/>Use the arrow keys, the space bar, or the touch pad</p>
+<p><i>On a desktop:</i><br/> Use any of the above, or the scroll wheel</p>
+</div>
+
+<img class="cover" src="" alt="" />
+<div class="title"> <h1><span>O aparelho do Partido</span> </h1> <h2>Teógenes Moura</h2> </div>
+<h2 id="chapter_note_to_readers">
+<a href="#note_to_readers">Note to Readers</a>
+</h2>
+
+<p class="spacetime"> Teógenes Moura <br />
+Brasília, Brazil<br />
+August 2020</p>
+
+<h2 id="chapter_o_aparelho_do_partido">
+<a href="#o_aparelho_do_partido">O Aparelho do partido</a>
+</h2>
+
+<p><small>O rádio utilizado pela alta cúpula do partido possuía dois botões: o de falar e o vermelho</small>. O primeiro possuía um uso bastante óbvio e explícito. Era o canal criptografado de comunicação direta entre os cinco membros mais próximos do Líder. O segundo, tinha uma função única e secreta: explodir o cofre da sala do Líder caso algo desse errado. A explosão destruiria os registros de corrupção guardados e qualquer um que estivesse por perto.</p>
+
+<p>Depois de meses de encontros nas surdinas, os cinco conselheiros da alta cúpula do partido haviam chegado num acordo. Explodiriam o cofre enquanto o Líder estivesse dentro da sala. Logo após destruiriam os rádios, que mantinham as conversas guardadas nos seis aparelhos simultaneamente por meio de um sistema de registros distribuídos –- de modo que qualquer traidor seria instantaneamente detectado por qualquer um dos outros membros. Há muito os cinco conselheiros já não eram fiéis ao Líder. O que começou como uma liderança carismática e preocupada com paz e estabilidade social rapidamente se transformou num tratamento frio, cruel e sem nenhuma piedade mesmo dos que estavam no topo da hierarquia partidária.</p>
+
+<p>O dia havia, então, chegado. Como combinado, precisamente no tempo-época 1600000000 os botões seriam apertados e o sistema destruído. Lúcio estava nervoso. Usualmente tranquilo, duas taças de vinho ainda não haviam surtido efeito. O aparelho em suas mãos era a última barreira contra a queda do Regime, que já se perdurava por décadas.
+Dramatic enough way for a mystery to begin.</p>
+
+<p>No momento exato, Lúcio apertou o botão com força. Uma traição, de qualquer um dos conselheiros, representava duas coisas: tortura e morte. A pena para os da ralé era um pelotão de fuzilamento, mas Lúcio sabia que para o alto escalão a tortura viria antes.</p>
+
+<p>Acima dos botões, mas abaixo da inscrição do partido, havia um painel com seis luzes LED de cor verde limão. Cada uma delas acenderia caso um dos rádios tivesse seu botão vermelho acionado. Lúcio não desconfiava dos membros do conselho. Haviam instaurado a revolução juntos, passado fome juntos e lutado juntos. A perspectiva de morrer por uma traição de qualquer um deles, no entanto, permanecia presente em sua mente.</p>
+
+<p>Havia errado em apertar primeiro. Se todos os outros resolvessem traí-lo – ou pior, se tivesse sido vítima de uma armação, seu registro nos rádios de todos estaria claramente disponível como prova de sua traição e bilhete de ouro para uma sessão de cadeira elétrica. Não era de sentir medo, mas a taça tremulante em sua mão denunciava seu nervosismo.</p>
+
+<p>O combinado havia sido que todos apertariam ao mesmo tempo, mas vários segundos já se passavam.</p>
+
+<p>O rádio não deu mais sinal de vida. Lúcio estava conflitante. Não sabia ao certo se era um problema no aparelho ou se deveria fugir. Antes que pudesse raciocinar, no entanto, a porta de seu apartamento foi jogada para trás por um estrondo forte. O explosivo usado para tal deixou um clarão que o atordoou por vários segundos.</p>
+
+<p>Assim que recobrou sua consciência, Lúcio já estava preso em sua cadeira com as mãos atadas e uma fita cinza cobrindo sua boca. Ao seu redor, os outros conselheiros surgiram com máscaras brancas escondendo o rosto. Atrás deles, o Líder apareceu.</p>
+
+<p>“Uma pena, Lúcio. Tanto potencial. Você seria o próximo Líder, acredita?” – A voz rouca do líder ressoava pelo seu apartamento sem nenhuma obstrução. Lúcio se debatia fortemente para se livrar das amarras, mas sem sucesso.</p>
+
+<p>“Olha só o que eu achei, chefe” – Disse um dos mascarados, mostrando dois eletrodos conectados a uma tomada próxima.</p>
+
+<p>“Então era assim que você pretendia se livrar do seu rádio? Não sejamos maleducados, então. Prossigam.”
+Um dos conselheiros se aproximou de Lúcio e desabotoou sua camisa social rispidamente. O frio dos eletrodos metálicos ao encostar em sua pele lembrou-o das consultas médicas de quando era criança e que ele detestava. Desta vez, no entanto, o medo não era do médico.
+Assim que o conselheiro colocou o aparelho na tomada, Lúcio sentiu apenas a sua visão ficando escura e então não sentiu mais nada.</p>
+
+<p class="last-page"></p>
+
+<div class="bookmark">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 40 80" xml:space="preserve">
+<g>
+<polygon points="0,0 0,80 20,70 40,80 40,0"/>
+</g>
+</svg>
+</div>
+
+</div>
+
+<div class="shadow-page-container"></div>
+
+<button class="toc-button">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100%" height="100%" viewBox="0 0 80 40" xml:space="preserve">
+<g>
+<rect x="0" y="10" width="5" height="1" />
+<rect x="0" y="20" width="5" height="1" />
+<rect x="0" y="30" width="5" height="1" />
+
+<rect x="10" y="10" width="70" height="1" />
+<rect x="10" y="20" width="70" height="1" />
+<rect x="10" y="30" width="70" height="1" />
+</g>
+</svg>
+</button>
+
+</body>
+</html>
